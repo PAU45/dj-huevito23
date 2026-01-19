@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: dj-huevito-allinone
+    restart: unless-stopped
+    ports:
+      - "3001:3001" # Backend
+    # Evitar montar el directorio de trabajo para no sobreescribir node_modules instalados en la imagen
+    # Si necesitas editar código en caliente, remueve esta sección.
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    tty: true
