@@ -85,7 +85,11 @@ const frontendBuild = path.resolve(process.cwd(), 'frontend/build');
 import fs from 'fs';
 if (fs.existsSync(frontendBuild)) {
   app.use(express.static(frontendBuild));
-  app.get('*', (req, res) => res.sendFile(path.join(frontendBuild, 'index.html')));
+  // Catch-all for SPA: only serve index.html for non-API GET routes.
+  app.get('*', (req, res, next) => {
+    if (req.path && req.path.startsWith('/api/')) return next();
+    return res.sendFile(path.join(frontendBuild, 'index.html'));
+  });
   console.log('Frontend estático detectado en ../frontend/build — serviendo archivos estáticos');
 } else {
   console.log('No se encontró frontend build en ../frontend/build — el backend funcionará solo como API');
