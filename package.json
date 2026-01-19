@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "render-build": "npm --prefix frontend install --legacy-peer-deps && npm --prefix frontend run build && npm --prefix backend install --production && npm install --production",
+    "render-build": "npm install --no-audit --no-fund && cd frontend && npm install --legacy-peer-deps --no-audit --no-fund && npm run build && cd ../backend && npm install --no-audit --no-fund",
     "cookies:refresh": "node -e \"require('./cookies-maintainer').refreshCookiesIfNeeded({maxAgeHours:0, preferredBrowser:'chrome'}).then(()=>console.log('Cookies refrescadas')).catch(e=>{console.error(e);process.exit(1);})\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

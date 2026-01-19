@@ -3,6 +3,7 @@ import { Box, Button, TextField, Typography, Alert } from '@mui/material';
 
 export default function SetupPanel() {
   const [token, setToken] = React.useState('');
+  const [proxy, setProxy] = React.useState('');
   const [status, setStatus] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
@@ -12,10 +13,12 @@ export default function SetupPanel() {
     setLoading(true);
     setStatus({ type: 'info', msg: 'Iniciando bot...' });
     try {
+      const body = { token };
+      if (proxy && proxy.trim()) body.proxyUrl = proxy.trim();
       const res = await fetch('/api/config/init-bot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        body: JSON.stringify(body)
       });
       const json = await res.json();
       if (res.ok) {
@@ -49,6 +52,13 @@ export default function SetupPanel() {
         type="password"
         fullWidth
         required
+      />
+      <TextField
+        label="Proxy (opcional)"
+        value={proxy}
+        onChange={(e) => setProxy(e.target.value)}
+        placeholder="http://user:pass@1.2.3.4:8080  ó  socks5://1.2.3.4:1080"
+        fullWidth
       />
       <Button variant="contained" type="submit" disabled={loading}>Iniciar Bot</Button>
       {status && (

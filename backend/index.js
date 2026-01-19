@@ -116,22 +116,36 @@ app.get('/api/config/messages', (req, res) => {
 
 // Endpoint para recibir token dinámicamente e iniciar el bot
 app.post('/api/config/init-bot', (req, res) => {
-  const { token } = req.body;
-  
+  const { token, proxyUrl } = req.body;
+
   if (!token) {
     return res.status(400).json({ error: 'Token es requerido' });
   }
-  
+
   if (botProcess) {
     return res.status(400).json({ error: 'Bot ya está corriendo' });
   }
-  
+
   // Establecer el token en el ambiente
   process.env.DISCORD_TOKEN = token;
-  
+
+  // Si viene proxyUrl, setear variables de entorno apropiadas
+  if (proxyUrl && typeof proxyUrl === 'string' && proxyUrl.trim()) {
+    const p = proxyUrl.trim();
+    // Diferenciar socks vs http(s)
+    if (p.startsWith('socks')) {
+      process.env.SOCKS_PROXY = p;
+      console.log('Proxy SOCKS configurado desde frontend');
+    } else {
+      process.env.HTTPS_PROXY = p;
+      process.env.HTTP_PROXY = p;
+      console.log('Proxy HTTP(S) configurado desde frontend');
+    }
+  }
+
   console.log('Token recibido desde frontend — iniciando bot...');
   startBotProcess();
-  
+
   return res.json({ success: true, message: 'Bot iniciándose...' });
 });
 
@@ -139,7 +153,8 @@ app.post('/api/config/init-bot', (req, res) => {
 app.get('/api/bot/status', (req, res) => {
   const running = !!botProcess;
   const pid = botProcess && botProcess.pid ? botProcess.pid : null;
-  return res.json({ running, pid });
+  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.SOCKS_PROXY || null;
+  return res.json({ running, pid, proxy });
 });
 
 // Endpoint de diagnóstico de conectividad a Discord
