@@ -27,13 +27,31 @@ app.get('/', (req, res) => {
   res.send('Backend DJ Huevito funcionando');
 });
 
+// Ruta para la página de setup de token
+app.get('/setup', (req, res) => {
+  const setupPath = path.resolve('../frontend/public/setup.html');
+  if (fs.existsSync(setupPath)) {
+    res.sendFile(setupPath);
+  } else {
+    res.send(`
+      <h1>DJ Huevito - Token Setup</h1>
+      <p>Archivo setup.html no encontrado. Por favor, asegúrate que exista en frontend/public/setup.html</p>
+    `);
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en puerto ${PORT}`);
   console.log('Rutas registradas: /api/player, /api/cookies, /api/sources, /api/messages, /api/spotify');
   
-  // Iniciar bot.js como proceso hijo después de que el servidor esté listo
-  startBotProcess();
+  // Solo iniciar bot si hay token en .env
+  if (process.env.DISCORD_TOKEN) {
+    console.log('DISCORD_TOKEN encontrado en .env — iniciando bot automáticamente...');
+    startBotProcess();
+  } else {
+    console.log('⚠️  No hay DISCORD_TOKEN en .env — ingresa el token en http://localhost:3001');
+  }
 });
 
 // Servir frontend estático si existe (build)
@@ -65,6 +83,27 @@ app.get('/api/config/messages', (req, res) => {
   } catch (e) {
     return res.json({ playMessage: '' });
   }
+});
+
+// Endpoint para recibir token dinámicamente e iniciar el bot
+app.post('/api/config/init-bot', (req, res) => {
+  const { token } = req.body;
+  
+  if (!token) {
+    return res.status(400).json({ error: 'Token es requerido' });
+  }
+  
+  if (botProcess) {
+    return res.status(400).json({ error: 'Bot ya está corriendo' });
+  }
+  
+  // Establecer el token en el ambiente
+  process.env.DISCORD_TOKEN = token;
+  
+  console.log('Token recibido desde frontend — iniciando bot...');
+  startBotProcess();
+  
+  return res.json({ success: true, message: 'Bot iniciándose...' });
 });
 
 // ============================================
