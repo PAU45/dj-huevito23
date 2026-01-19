@@ -60,6 +60,11 @@ app.get('/diagnose', (req, res) => {
   return res.send('<h1>Diagnóstico no disponible</h1><p>Coloca frontend/public/diagnose.html o compila el frontend.</p>');
 });
 
+// Redirigir rutas equivocadas que algunos enlaces puedan generar
+app.get('/frontend/public/*', (req, res) => {
+  return res.redirect('/');
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en puerto ${PORT}`);

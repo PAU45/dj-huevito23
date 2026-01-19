@@ -37,8 +37,14 @@ async function runDiag(){
   show('Ejecutando /api/diagnose ...');
   try{
     const r = await fetch('/api/diagnose');
-    const j = await r.json();
-    show(j);
+    const text = await r.text();
+    try{
+      const j = JSON.parse(text);
+      show(j);
+    }catch(parseErr){
+      show('Respuesta no-JSON recibida:');
+      show(text);
+    }
   }catch(e){
     show('Error: '+ e.message);
   }
@@ -48,8 +54,14 @@ async function botStatus(){
   show('Consultando /api/bot/status ...');
   try{
     const r = await fetch('/api/bot/status');
-    const j = await r.json();
-    show(j);
+    const text = await r.text();
+    try{
+      const j = JSON.parse(text);
+      show(j);
+    }catch(parseErr){
+      show('Respuesta no-JSON recibida:');
+      show(text);
+    }
   }catch(e){
     show('Error: '+ e.message);
   }
