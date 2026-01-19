@@ -31,6 +31,9 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en puerto ${PORT}`);
   console.log('Rutas registradas: /api/player, /api/cookies, /api/sources, /api/messages, /api/spotify');
+  
+  // Iniciar bot.js como proceso hijo después de que el servidor esté listo
+  startBotProcess();
 });
 
 // Servir frontend estático si existe (build)
@@ -62,4 +65,50 @@ app.get('/api/config/messages', (req, res) => {
   } catch (e) {
     return res.json({ playMessage: '' });
   }
+});
+
+// ============================================
+// GESTIÓN DEL PROCESO BOT COMO HIJO
+// ============================================
+import { spawn } from 'child_process';
+
+let botProcess = null;
+
+function startBotProcess() {
+  console.log('Iniciando bot.js como proceso hijo...');
+  
+  // Usar spawn para iniciar bot.js en un proceso separado
+  botProcess = spawn('node', ['bot.js'], {
+    stdio: 'inherit', // heredar stdout/stderr para ver logs del bot
+    cwd: process.cwd() // ejecutar desde la raíz del proyecto
+  });
+  
+  console.log(`Bot process iniciado con PID ${botProcess.pid}`);
+  
+  botProcess.on('error', (err) => {
+    console.error('Error al iniciar bot.js:', err);
+    // Reintentar después de 5 segundos si falla
+    console.log('Reintentando en 5 segundos...');
+    setTimeout(startBotProcess, 5000);
+  });
+  
+  botProcess.on('exit', (code, signal) => {
+    console.warn(`Bot process terminado con código ${code} y señal ${signal}`);
+    console.log('Reintentando en 5 segundos...');
+    // Reintentar después de 5 segundos si se cierra
+    setTimeout(startBotProcess, 5000);
+  });
+}
+
+// Manejar cierre graceful del backend (cierra bot también)
+process.on('SIGTERM', () => {
+  console.log('SIGTERM recibido, cerrando backend y bot...');
+  if (botProcess) botProcess.kill();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT recibido, cerrando backend y bot...');
+  if (botProcess) botProcess.kill();
+  process.exit(0);
 });
