@@ -462,6 +462,7 @@ if (!process.env.DISCORD_TOKEN) {
 }
 
 // Intentar iniciar sesión y capturar errores explícitamente
+logger.info('Iniciando client.login()...');
 client.login(process.env.DISCORD_TOKEN).then(() => {
   logger.info('client.login() promise resuelta — iniciando proceso de conexión');
 }).catch((err) => {
