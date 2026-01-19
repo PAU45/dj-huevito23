@@ -7,6 +7,25 @@ const { logger, findExecutable, safeDelete, cleanupChildProcs, fs } = require('.
 const { sendNowPlayingMessage, updateNowPlayingMessage, startProgressInterval, stopProgressInterval } = require('./lib/embed');
 const { playWithYtDlp, handleFallbackButton } = require('./lib/ytplayer');
 
+// Proxy agent opcional (HTTPS / SOCKS). Se activa si existe HTTPS_PROXY, HTTP_PROXY o SOCKS_PROXY.
+let proxyAgent = null;
+try {
+  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.SOCKS_PROXY;
+  if (proxyUrl) {
+    if (proxyUrl.startsWith('socks')) {
+      const { SocksProxyAgent } = require('socks-proxy-agent');
+      proxyAgent = new SocksProxyAgent(proxyUrl);
+      logger.info('Socks proxy agent configurado desde env:', proxyUrl);
+    } else {
+      const { HttpsProxyAgent } = require('https-proxy-agent');
+      proxyAgent = new HttpsProxyAgent(proxyUrl);
+      logger.info('HTTPS proxy agent configurado desde env:', proxyUrl);
+    }
+  }
+} catch (e) {
+  logger.warn('No se pudo configurar proxy agent (dependencia ausente o URL inválida):', e && e.message ? e.message : e);
+}
+
 // Logger provisto por ./lib/utils
 
 // Config dinámico (fuente y mensajes)
@@ -36,14 +55,21 @@ process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception:', err && err.stack ? err.stack : err);
 });
 
-const client = new Client({
+const clientOptions = {
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
-});
+};
+
+// Inyectar agente WS si fue configurado (permite enrutar WebSocket a través de proxy)
+if (proxyAgent) {
+  clientOptions.ws = { agent: proxyAgent };
+}
+
+const client = new Client(clientOptions);
 
 // Crear player de discord-player (sin servidor externo)
 const player = new Player(client, {
@@ -160,6 +186,36 @@ client.once('ready', async () => {
   logger.info(`Bot conectado como ${client.user.tag}`);
   logger.info('Usando discord-player (YouTube, Spotify, SoundCloud)');
 });
+
+// Logs y diagnóstico adicional del WebSocket
+client.on('error', (err) => {
+  logger.error('Client error event:', err && err.stack ? err.stack : err);
+});
+client.on('warn', (msg) => {
+  logger.warn('Client warn:', msg);
+});
+
+// Registrar cierre del WebSocket (close codes) cuando esté disponible
+const registerWsCloseLogger = () => {
+  try {
+    if (client.ws && typeof client.ws.on === 'function') {
+      client.ws.on('close', (code, reason) => {
+        try {
+          const r = reason ? reason.toString() : '<no reason>';
+          logger.warn('WebSocket closed - code=' + code + ' reason=' + r);
+        } catch (e) {
+          logger.warn('WebSocket closed - code=' + code + ' (reason unparsable)');
+        }
+      });
+    }
+  } catch (e) {
+    logger.debug('No se pudo registrar logger WS close:', e && e.message ? e.message : e);
+  }
+};
+
+// Registrar ahora si ya listo, o cuando 'ready' ocurra
+if (client.ws) registerWsCloseLogger();
+client.once('ready', () => registerWsCloseLogger());
 
 // Limpiar procesos hijos cuando el proceso de node sale o recibe señal
 process.on('exit', () => {
