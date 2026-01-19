@@ -29,15 +29,21 @@ app.get('/', (req, res) => {
 
 // Ruta para la página de setup de token
 app.get('/setup', (req, res) => {
-  const setupPath = path.resolve('../frontend/public/setup.html');
-  if (fs.existsSync(setupPath)) {
-    res.sendFile(setupPath);
-  } else {
-    res.send(`
-      <h1>DJ Huevito - Token Setup</h1>
-      <p>Archivo setup.html no encontrado. Por favor, asegúrate que exista en frontend/public/setup.html</p>
-    `);
+  const setupBuildPath = path.join(frontendBuild, 'setup.html');
+  const setupPublicPath = path.resolve(process.cwd(), 'frontend/public/setup.html');
+
+  if (fs.existsSync(setupBuildPath)) {
+    return res.sendFile(setupBuildPath);
   }
+
+  if (fs.existsSync(setupPublicPath)) {
+    return res.sendFile(setupPublicPath);
+  }
+
+  return res.send(`
+    <h1>DJ Huevito - Token Setup</h1>
+    <p>Archivo setup.html no encontrado. Por favor, asegúrate que exista en frontend/public/setup.html o que el frontend haya sido compilado.</p>
+  `);
 });
 
 const PORT = process.env.PORT || 3001;
@@ -56,7 +62,7 @@ app.listen(PORT, () => {
 
 // Servir frontend estático si existe (build)
 import path from 'path';
-const frontendBuild = path.resolve('../frontend/build');
+const frontendBuild = path.resolve(process.cwd(), 'frontend/build');
 import fs from 'fs';
 if (fs.existsSync(frontendBuild)) {
   app.use(express.static(frontendBuild));

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Huevito - Token Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            margin-bottom: 15px;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .info {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-align: center;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        
+        .helper-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 DJ Huevito</h1>
+        <p class="subtitle">Ingresa tu token de Discord para iniciar el bot</p>
+        
+        <div class="info">
+            💡 <strong>¿Dónde obtener tu token?</strong><br>
+            Ve a <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a> 
+            → Tu aplicación → Bot → Copy Token
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <form id="tokenForm">
+            <div class="form-group">
+                <label for="token">Discord Bot Token</label>
+                <input 
+                    type="password" 
+                    id="token" 
+                    placeholder="Pega tu token aquí" 
+                    required
+                    autocomplete="off"
+                >
+                <div class="helper-text">Tu token nunca se guardará, solo se usará para conectar el bot</div>
+            </div>
+            
+            <button type="submit" id="submitBtn">Iniciar Bot</button>
+            <button type="button" id="showBtn" onclick="toggleTokenVisibility()">Mostrar/Ocultar Token</button>
+        </form>
+        
+        <div id="botStatus" style="margin-top: 20px; text-align: center; display: none;">
+            <p style="color: #28a745; font-weight: 600;">✓ Bot conectado exitosamente</p>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                Puedes cerrar esta ventana o ir a <a href="/" style="color: #667eea;">la aplicación</a>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        function toggleTokenVisibility() {
+            const input = document.getElementById('token');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        
+        function setStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (!token) {
+                setStatus('El token no puede estar vacío', 'error');
+                return;
+            }
+            
+            // Deshabilitar botón
+            submitBtn.disabled = true;
+            setStatus('Iniciando bot...', 'loading');
+            
+            try {
+                const response = await fetch('/api/config/init-bot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    setStatus('✓ Bot iniciado correctamente', 'success');
+                    document.getElementById('tokenForm').style.display = 'none';
+                    document.getElementById('botStatus').style.display = 'block';
+                    
+                    // Esperar 3 segundos y redirigir
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000);
+                } else {
+                    setStatus(data.error || 'Error al iniciar el bot', 'error');
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                setStatus('Error de conexión: ' + error.message, 'error');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
