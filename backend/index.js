@@ -112,6 +112,13 @@ app.post('/api/config/init-bot', (req, res) => {
   return res.json({ success: true, message: 'Bot iniciándose...' });
 });
 
+// Endpoint para comprobar estado del bot
+app.get('/api/bot/status', (req, res) => {
+  const running = !!botProcess;
+  const pid = botProcess && botProcess.pid ? botProcess.pid : null;
+  return res.json({ running, pid });
+});
+
 // ============================================
 // GESTIÓN DEL PROCESO BOT COMO HIJO
 // ============================================
@@ -121,26 +128,48 @@ let botProcess = null;
 
 function startBotProcess() {
   console.log('Iniciando bot.js como proceso hijo...');
-  
-  // Usar spawn para iniciar bot.js en un proceso separado
+
+  // Asegurar que el token esté presente
+  if (!process.env.DISCORD_TOKEN) {
+    console.error('DISCORD_TOKEN no está definido en el entorno — abortando inicio del bot');
+    return;
+  }
+
+  // Usar spawn con pipes para capturar stdout/stderr y reenviarlos a los logs del backend
   botProcess = spawn('node', ['bot.js'], {
-    stdio: 'inherit', // heredar stdout/stderr para ver logs del bot
-    cwd: process.cwd() // ejecutar desde la raíz del proyecto
+    stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: process.cwd(),
+    env: { ...process.env }
   });
-  
-  console.log(`Bot process iniciado con PID ${botProcess.pid}`);
-  
+
+  console.log(`Bot process spawn requested, PID (may be null until spawned): ${botProcess.pid}`);
+
+  if (botProcess.stdout) {
+    botProcess.stdout.on('data', (chunk) => {
+      process.stdout.write(`[bot stdout] ${chunk}`);
+    });
+  }
+
+  if (botProcess.stderr) {
+    botProcess.stderr.on('data', (chunk) => {
+      process.stderr.write(`[bot stderr] ${chunk}`);
+    });
+  }
+
+  botProcess.on('spawn', () => {
+    console.log(`Bot process iniciado con PID ${botProcess.pid}`);
+  });
+
   botProcess.on('error', (err) => {
     console.error('Error al iniciar bot.js:', err);
-    // Reintentar después de 5 segundos si falla
     console.log('Reintentando en 5 segundos...');
     setTimeout(startBotProcess, 5000);
   });
-  
-  botProcess.on('exit', (code, signal) => {
-    console.warn(`Bot process terminado con código ${code} y señal ${signal}`);
+
+  botProcess.on('close', (code, signal) => {
+    console.warn(`Bot process finalizó (close) con código ${code} y señal ${signal}`);
     console.log('Reintentando en 5 segundos...');
-    // Reintentar después de 5 segundos si se cierra
+    botProcess = null;
     setTimeout(startBotProcess, 5000);
   });
 }
