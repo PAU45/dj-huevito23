@@ -34,7 +34,5 @@
     "youtube-ext": "^1.1.25",
     "ytdl-core": "^4.11.5"
     ,
-    "https-proxy-agent": "^7.0.0",
-    "socks-proxy-agent": "^7.1.0"
   }
 }
