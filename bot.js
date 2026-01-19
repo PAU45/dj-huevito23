@@ -452,4 +452,18 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// Diagnóstico: informar si el token está presente (no imprimir el valor)
+if (!process.env.DISCORD_TOKEN) {
+  logger.error('DISCORD_TOKEN no está configurado en el entorno');
+} else {
+  try {
+    logger.info('DISCORD_TOKEN presente (longitud=' + process.env.DISCORD_TOKEN.length + ')');
+  } catch (e) { logger.debug('Error al leer DISCORD_TOKEN length', e && e.message ? e.message : e); }
+}
+
+// Intentar iniciar sesión y capturar errores explícitamente
+client.login(process.env.DISCORD_TOKEN).then(() => {
+  logger.info('client.login() promise resuelta — iniciando proceso de conexión');
+}).catch((err) => {
+  logger.error('Error durante client.login():', err && err.stack ? err.stack : err);
+});

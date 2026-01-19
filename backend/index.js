@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en puerto ${PORT}`);
+  console.log('Rutas registradas: /api/player, /api/cookies, /api/sources, /api/messages, /api/spotify');
 });
 
 // Servir frontend estático si existe (build)
@@ -39,6 +40,9 @@ import fs from 'fs';
 if (fs.existsSync(frontendBuild)) {
   app.use(express.static(frontendBuild));
   app.get('*', (req, res) => res.sendFile(path.join(frontendBuild, 'index.html')));
+  console.log('Frontend estático detectado en ../frontend/build — serviendo archivos estáticos');
+} else {
+  console.log('No se encontró frontend build en ../frontend/build — el backend funcionará solo como API');
 }
 
 // Endpoints para obtener configuración actual
