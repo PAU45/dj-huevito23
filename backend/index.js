@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
+import dns from 'dns';
+import https from 'https';
+import net from 'net';
 
 const app = express();
 app.use(cors());
@@ -44,6 +47,17 @@ app.get('/setup', (req, res) => {
     <h1>DJ Huevito - Token Setup</h1>
     <p>Archivo setup.html no encontrado. Por favor, asegúrate que exista en frontend/public/setup.html o que el frontend haya sido compilado.</p>
   `);
+});
+
+// Ruta para página de diagnóstico (servir desde build/public)
+app.get('/diagnose', (req, res) => {
+  const diagBuildPath = path.join(frontendBuild, 'diagnose.html');
+  const diagPublicPath = path.resolve(process.cwd(), 'frontend/public/diagnose.html');
+
+  if (fs.existsSync(diagBuildPath)) return res.sendFile(diagBuildPath);
+  if (fs.existsSync(diagPublicPath)) return res.sendFile(diagPublicPath);
+
+  return res.send('<h1>Diagnóstico no disponible</h1><p>Coloca frontend/public/diagnose.html o compila el frontend.</p>');
 });
 
 const PORT = process.env.PORT || 3001;
@@ -117,6 +131,73 @@ app.get('/api/bot/status', (req, res) => {
   const running = !!botProcess;
   const pid = botProcess && botProcess.pid ? botProcess.pid : null;
   return res.json({ running, pid });
+});
+
+// Endpoint de diagnóstico de conectividad a Discord
+app.get('/api/diagnose', async (req, res) => {
+  const results = {
+    node: process.version,
+    tokenPresent: !!process.env.DISCORD_TOKEN,
+    tokenLength: process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0,
+    dns: null,
+    https: null,
+    tcp: null,
+    timestamp: new Date().toISOString(),
+  };
+
+  // DNS lookup
+  try {
+    const dnsInfo = await dns.promises.lookup('gateway.discord.gg');
+    results.dns = { ok: true, address: dnsInfo.address, family: dnsInfo.family };
+  } catch (e) {
+    results.dns = { ok: false, error: String(e) };
+  }
+
+  // HTTPS request to Discord gateway endpoint
+  try {
+    results.https = await new Promise((resolve) => {
+      const req = https.request(
+        {
+          hostname: 'discord.com',
+          path: '/api/v10/gateway',
+          method: 'GET',
+          timeout: 8000,
+        },
+        (r) => {
+          let body = '';
+          r.on('data', (c) => (body += c.toString()));
+          r.on('end', () => resolve({ ok: true, statusCode: r.statusCode, body: body ? body.substring(0, 1000) : '' }));
+        },
+      );
+      req.on('error', (err) => resolve({ ok: false, error: String(err) }));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({ ok: false, error: 'timeout' });
+      });
+      req.end();
+    });
+  } catch (e) {
+    results.https = { ok: false, error: String(e) };
+  }
+
+  // TCP connect to gateway.discord.gg:443
+  try {
+    results.tcp = await new Promise((resolve) => {
+      const socket = net.connect({ host: 'gateway.discord.gg', port: 443 }, () => {
+        socket.end();
+        resolve({ ok: true });
+      });
+      socket.setTimeout(8000, () => {
+        socket.destroy();
+        resolve({ ok: false, error: 'timeout' });
+      });
+      socket.on('error', (err) => resolve({ ok: false, error: String(err) }));
+    });
+  } catch (e) {
+    results.tcp = { ok: false, error: String(e) };
+  }
+
+  return res.json(results);
 });
 
 // ============================================

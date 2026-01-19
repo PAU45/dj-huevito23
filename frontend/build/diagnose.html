@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DJ Huevito - Diagnose</title>
+  <style>
+    body{font-family:Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#222;padding:24px}
+    .card{background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.08);max-width:900px;margin:0 auto}
+    h1{margin-bottom:8px}
+    pre{background:#0f1720;color:#dbeafe;padding:12px;border-radius:6px;overflow:auto}
+    button{padding:10px 14px;border:none;border-radius:6px;background:#4f46e5;color:#fff;cursor:pointer}
+    .row{display:flex;gap:8px;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Diagnóstico de Conectividad</h1>
+    <p>Prueba DNS, HTTPS y TCP hacia los endpoints de Discord, y estado del bot.</p>
+    <div class="row">
+      <button id="run">Ejecutar diagnóstico</button>
+      <button id="status">Estado del bot</button>
+      <button id="clear">Limpiar</button>
+    </div>
+    <div id="out"></div>
+  </div>
+
+<script>
+const out = document.getElementById('out');
+function show(obj){
+  const pre = document.createElement('pre');
+  pre.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  out.prepend(pre);
+}
+
+async function runDiag(){
+  show('Ejecutando /api/diagnose ...');
+  try{
+    const r = await fetch('/api/diagnose');
+    const j = await r.json();
+    show(j);
+  }catch(e){
+    show('Error: '+ e.message);
+  }
+}
+
+async function botStatus(){
+  show('Consultando /api/bot/status ...');
+  try{
+    const r = await fetch('/api/bot/status');
+    const j = await r.json();
+    show(j);
+  }catch(e){
+    show('Error: '+ e.message);
+  }
+}
+
+document.getElementById('run').addEventListener('click', runDiag);
+document.getElementById('status').addEventListener('click', botStatus);
+document.getElementById('clear').addEventListener('click', ()=> out.innerHTML='');
+
+// auto-run on load
+runDiag();
+</script>
+</body>
+</html>
