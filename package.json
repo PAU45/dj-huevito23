@@ -33,6 +33,5 @@
     "youtube-dl-exec": "^3.0.22",
     "youtube-ext": "^1.1.25",
     "ytdl-core": "^4.11.5"
-    ,
   }
 }
